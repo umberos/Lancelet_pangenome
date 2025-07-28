@@ -10,17 +10,21 @@ library(FactoMineR)
 library(ggcorrplot)
 library(corrr)
 library(factoextra)
+library(seriation)
+library(heatmaply)
+library(ggridges)
+#packages = c('seriation', 'heatmaply', 'tidyverse')
 
 setwd("~/R_working/LANCELET") 
 data <- read.csv2("meta.csv") # LOAD METADATA
 
 ################ LOAD, COUNT & SELECT PAV GENES AND REGIONS (B. belcheri) ########
-Bb_PAV <- read.csv2("Bb_PAV.txt")
-Bb_PAV_5kb <- read.csv2("Bb_PAV_5kb.txt")
-Bb_PAV_count <- Bb_PAV %>% count(Gene)
-Bb_PAV_count_count <- Bb_PAV_count %>% count(n)
-Bb_PAV_sel<-Bb_PAV_count[Bb_PAV_count$n>10,]
-Bb_PAV_5kb_count <- Bb_PAV_5kb %>% count(Gene)
+Bb_PAV <- read.csv2("Bb_PAV.txt") # LOAD THE LIST OF MISSING GENES IN ALL THE SAMPLES
+Bb_PAV_5kb <- read.csv2("Bb_PAV_5kb.txt") # LOAD THE LIST OF MISSING REGIONS IN ALL THE SAMPLES
+Bb_PAV_count <- Bb_PAV %>% count(Gene) # COUNT THE OCCURRENCES PER GENE
+Bb_PAV_count_count <- Bb_PAV_count %>% count(n) # COUNT THE DISTRIBUTION OF OCCURRENCES
+Bb_PAV_sel<-Bb_PAV_count[Bb_PAV_count$n>10,] # FILTER DISPENSABLE GENES (<90%)
+Bb_PAV_5kb_count <- Bb_PAV_5kb %>% count(Gene) # COUNT THE OCCURRENCES PER REGION
 Bb_PAV_5kb_count_count <- Bb_PAV_5kb_count %>% count(n)
 Bb_PAV_5kb_sel<-Bb_PAV_5kb_count[Bb_PAV_5kb_count$n>10,]
 
@@ -38,7 +42,6 @@ Bf_PAV_sel_d50<-Bf_PAV_count_d[Bf_PAV_count_d$n>9,]
 Bf_PAV_5kb_count <- Bf_PAV_5kb %>% count(Gene)
 Bf_PAV_5kb_sel<-Bf_PAV_5kb_count[Bf_PAV_5kb_count$n>4,]
 
-
 empVec <- character()
 vec1 = c(empVec, Bf_PAV_sel_d50$Gene, na.rm=TRUE)
 
@@ -46,10 +49,8 @@ vec1 = c(empVec, Bf_PAV_sel_d50$Gene, na.rm=TRUE)
 #vec2 = c(empVec, Bf_PAV_sel$Gene, na.rm=TRUE)
 
 ############################### HEATMAP & PCA (B. belcheri) #########################
-setwd("~/R_working/MERC/LANCELET")
-packages = c('seriation', 'heatmaply', 'tidyverse')
 
-Bb_matrix_REGION <- read.csv2("Bb_matrix_5kb.csv")
+Bb_matrix_REGION <- read.csv2("Bb_matrix_5kb.csv")  # LOAD THE MATRIX OF MISSING REGIONS IN ALL THE SAMPLES 
 Bb_matrix_PAV_R <- inner_join(Bb_matrix_REGION, Bb_PAV_5kb_sel, by = c("Gene"))
 row.names(Bb_matrix_PAV_R) <- Bb_matrix_PAV_R$Gene
 Bb_matrix_PAV_R_s <- select(Bb_matrix_PAV_R, c(2, 2:101))
@@ -152,9 +153,8 @@ FIG_PCA <- ggarrange(PCA_Bb,CORR_Bb,PCA_Bf,CORR_Bf, ncol = 2, nrow = 2, labels =
                      heights = c(1,1), common.legend = TRUE, legend = c("none"), font.label = list(size = 20, color = "black"))
 FIG_PCA
 
-
-Bf_matrix_d <- read.csv2("Bf_matrix_genes_doughter.csv")
-Bf_10_d <- inner_join(Bf_doughter, Bf_PAV_sel_d, by = c("Gene"))
+Bf_matrix_doughter <- read.csv2("Bf_matrix_genes_doughter.csv") ## LOAD THE MATRIX REALTED TO PARENT-OFFSPRING PAV
+Bf_10_d <- inner_join(Bf_matrix_doughter, Bf_PAV_sel_d, by = c("Gene"))
 row.names(Bf_10_d) <- Bf_10_d$Gene
 Bf_s_d <- select(Bf_10_d, c(2, 2:97))
 Bf_matrix_d <- data.matrix(Bf_s_d)
@@ -190,9 +190,7 @@ Bf_vol_f <- ggplot(Bf_vol, aes(x=log2(value), y=-log10(FDR), col=diffexpressed, 
   scale_color_manual(values=c("grey", "#33CCCC", "green")) + xlab("Enrichment FC (log2)")
 Bf_vol_f
 
-
 Bb_GO <- read.csv2("bb_GO_MOD.csv")
-
 vec5 <- Bb_GO[Bb_GO$diffexpressed== "UP" & Bb_GO$class== "biological_process",]
 vec5 <- as.vector(vec5$GOID)
 vec7 <- Bb_GO[Bb_GO$diffexpressed== "UP" & Bb_GO$class== "molecular_function",]
@@ -206,15 +204,12 @@ Bb_GO_f <- ggplot(Bb_GO, aes(x=log2(value), y=-log10(FDR), , col=class, label=de
   scale_color_manual(values=c("orange", "#FF6666", "blue")) + xlab("Enrichment FC (log2)")
 Bb_GO_f
 
-
 Bf_GO <- read.csv2("bf_GO_MOD.csv")
-
 vec6 <- Bf_GO[Bf_GO$diffexpressed== "UP" & Bf_GO$class == "biological_process",]
 vec6 <- as.vector(vec6$GOID)
 vec8 <- Bf_GO[Bf_GO$diffexpressed== "UP" & Bf_GO$class == "molecular_function",]
 vec8 <- as.vector(vec8$GOID)
 
-# The basic scatter plot: x is "log2FoldChange", y is "pvalue"
 Bf_GO_f <- ggplot(Bf_GO, aes(x=log2(value), y=-log10(FDR), col=class, label=delabel)) + geom_point() + theme_minimal()+ geom_text_repel() +
   theme(legend.position="none")+ xlim(0,7)+
   theme(text = element_text(size = 18), axis.text.x = element_text(size = 14))+
@@ -223,7 +218,6 @@ Bf_GO_f <- ggplot(Bf_GO, aes(x=log2(value), y=-log10(FDR), col=class, label=dela
   scale_color_manual(values=c("orange", "#FF6666", "blue")) + xlab("Enrichment FC (log2)")
 Bf_GO_f
 
-# Chart
 venn.diagram(x = list(vec3, vec4), category.names = c("B. belcheri" , "B. floridae"),
   filename = 'common PFAM.png', main = "Pfam", main.fontfamily = "sans", main.col = "black",
   main.cex = 2.5,
@@ -251,14 +245,13 @@ venn.diagram(x = list(vec7, vec8), category.names = c("B. belcheri" , "B. florid
              cex = 1.5,  fontfamily = "sans", cat.fontface = "italic", cat.cex = 0.8,  cat.default.pos = "outer",
              cat.pos = c(-20, 20),  cat.dist = c(0.055, 0.055),  cat.fontfamily = "sans",  cat.col = c("black", 'black'))
 
-
-############ DISPENSABILITY OF SELECTED GENES######################################
+############ DISPENSABILITY OF SELECTED GENES ######################################
 freq <- function(counts, lengths) {
   rate <- counts / lengths
   rate / sum(rate) * 1e6
 }
 
-IDEN_Bb <- read.csv2("Bb.all.csv")
+IDEN_Bb <- read.csv2("Bb.all.csv") # LOAD THE ANNOTATION FILE AS PREPARED BY INTERPROSCAN
 IDEN_Bb_count <- IDEN_Bb %>% count(annotation)
 
 IDEN_PAV_Bb <- inner_join(Bb_PAV_sel, IDEN_Bb, by = c("Gene"))
@@ -317,7 +310,7 @@ VOL_up
 
 ##################################### DE-NOVO & FIGURE 2##########################
 
-Bb_denovoPFAM <- read.csv2("Bb_Pfam_denovo.csv")
+Bb_denovoPFAM <- read.csv2("Bb_Pfam_denovo.csv") # LOAD ANNOTATIONS FOR THE DE-NOVO PAV GENES
 Bf_denovoPFAM <- read.csv2("Bf_Pfam_denovo.csv")
 
 Bb_denovoPFAM_count <- Bb_denovoPFAM %>% count(Domain)
@@ -326,14 +319,14 @@ Bf_denovoPFAM_count <- Bf_denovoPFAM %>% count(Domain)
 Bb_denovoPFAM_count_top20 <- top_n(Bb_denovoPFAM_count, 20, n)
 Bf_denovoPFAM_count_top20 <- top_n(Bf_denovoPFAM_count, 20, n)
 
-denovo_Pfam_Bb <- ggplot(BbdenovoPFAM_count_top20, aes(x=reorder(Domain,-n), y=n)) + 
+denovo_Pfam_Bb <- ggplot(Bb_denovoPFAM_count_top20, aes(x=reorder(Domain,-n), y=n)) + 
   geom_bar(stat="identity", lwd=1, color= "#FF6666", fill="transparent") + xlab("Sample ID")+
   theme_minimal()+ ylab("No. of domains") +
   theme(text = element_text(size = 18), axis.text.x = element_text(size = 14))+
   scale_fill_brewer(palette = "Spectral") + xlab("Pfam domain")+
   rotate_x_text(angle = 90) 
 denovo_Pfam_Bb
-denovo_Pfam_Bf <- ggplot(BfdenovoPFAM_count_top20, aes(x=reorder(Domain,-n), y=n)) + 
+denovo_Pfam_Bf <- ggplot(Bf_denovoPFAM_count_top20, aes(x=reorder(Domain,-n), y=n)) + 
   geom_bar(stat="identity", lwd=1, color= "#33CCCC", fill="transparent") + xlab("Sample ID")+
   theme_minimal()+ ylab("No. of domains") +
   theme(text = element_text(size = 18), axis.text.x = element_text(size = 14))+
@@ -351,39 +344,54 @@ FIG2 <- ggarrange(VOL_up, PERF_FIG, FIG2_bottom, ncol = 1, nrow = 3, labels = c(
                     heights = c(3,1,1.5), common.legend = TRUE, legend = c("none"), font.label = list(size = 20, color = "black"))
 FIG2
 
-
 ################################## FIGURE 5 ###########################################
-setwd("~/R_working/MERC/LANCELET/")
-tab <- read.csv2("vecRES_tab.csv")
-tab2 <- read.csv2("SNP_freq.csv")
-tab3 <- read.csv2("BelcheriHV_SNP.csv")
+tab <- read.csv2("vecRES_tab.csv") # LOAD COVERAGES OF BELCHERIHV-1 COMPUTED USINGE GENES AND REGIONS AND THEIR RATIOS
+tab2 <- read.csv2("SNP_freq.csv") # LOAD THE FREQUENCIES OF SNPs per GENOME nt
+tab3 <- read.csv2("BelcheriHV_SNP.csv") # LOAD THE FREQUENCIES OF SNPs FOR BELCHERIHV1
 
-FIG5b <- ggplot(tab, mapping = aes(x = region, y = gene)) +
-  sm_statCorr(fill = '#0f993d', linetype = "dotted", color = "#0f993d", corr_method = 'spearman')+
-   theme_minimal() + theme(legend.position="none") +
-  geom_point(shape = 21, size = 5, aes(fill="black")) + theme(text = element_text(size = 20))+
-  xlab("Virus/Cell (region)")+   ylab("Virus/Cell (genes)") + xlim(0.5,1.4) + ylim(0.5,1.4)
+#FIG5b <- ggplot(tab, mapping = aes(x = region, y = gene)) +
+#  sm_statCorr(fill = '#0f993d', linetype = "dotted", color = "#0f993d", corr_method = 'spearman')+
+#   theme_minimal() + theme(legend.position="none") +
+#  geom_point(shape = 21, size = 5, aes(fill="black")) + theme(text = element_text(size = 16))+
+#  xlab("Cov. BelcheriHV-1/Bf (region)")+   ylab("Cov. BelcheriHV-1/Bf (genes)") + xlim(0.5,1.4) + ylim(0.5,1.4)
+
+FIG5b <-ggpaired(tab2, x = "type", y = "SNP.nt", color = "type", line.color = "gray", line.size = 0.4, lwd = 5, 
+                 palette = "npg")+ stat_compare_means(paired = TRUE, label.y = 4.5) +
+  theme_minimal() + ylab("Polymorphism rate (nt / SNP)") + xlab("") + theme(text = element_text(size = 20))+
+  theme(legend.position="none", plot.title = element_text(size=20))
+FIG5b <- FIG5b + scale_y_continuous(trans='log10')
 FIG5b
 
-FIG5d <-ggpaired(tab2, x = "type", y = "SNP.nt", color = "type", line.color = "gray", line.size = 0.4, lwd = 5,
-         palette = "npg")+ stat_compare_means(paired = TRUE, label.y = 4.5) +
-  theme_minimal() + ylab("SNP every x nt") + xlab("") + theme(text = element_text(size = 20))+
-  theme(legend.position="none", plot.title = element_text(size=20))
-FIG5d <- FIG5d + scale_y_continuous(trans='log10')
-FIG5d
-
-FIG5c <- ggboxplot(tab3, x = "Sample", y = "Frequency", color = "Sample", lwd = 1) +
-  theme_minimal() + ylab("SNP frequency") + xlab("") + 
-  theme(text = element_text(size = 18), axis.text.x = element_text(size = 10))+
-  theme(legend.position="none", plot.title = element_text(size=20)) +
-  rotate_x_text(angle = 90) 
+snp_counts <- tab3 %>% group_by(Sample) %>% summarise(SNP_count = n())
+FIG5c <- ggplot(tab3, aes(x = Frequency, y = Sample, fill = Sample)) +
+  geom_density_ridges(scale = 1.2, alpha = 0.8, color = "white", rel_min_height = 0.1) +
+  geom_text(data = snp_counts, aes(x = 20,  y = Sample,label = paste0("n = ", SNP_count)), 
+            hjust = 0, vjust = 0, size = 4, inherit.aes = FALSE) +
+  theme_minimal() +  xlab("SNP frequency (%)") + xlim(20,100) +   ylab("") +
+  theme(text = element_text(size = 20),  axis.text.y = element_text(size = 14),  legend.position = "none",
+        plot.title = element_text(size = 20))
 FIG5c
 
-Figure5 <- ggarrange(ggplot() + theme_void(),ggplot() + theme_void(),FIG5b,
-                     ggplot() + theme_void(),ggplot() + theme_void(),FIG5c,
-                     ggplot() + theme_void(),ggplot() + theme_void(),FIG5d, 
-                     ncol = 3, nrow = 3,labels = c("a","b","","","c","","","d",""), widths = c(1.2,0.05,1,1.2,0.05,1,1.2,0.05,1), 
+FIG5d <-ggpaired(tab, x = "type", y = "coverage", color = "type", line.color = "gray", line.size = 0.4, lwd = 5, 
+                 palette = c("#8A2BE2", "#B8860B"))+ ylim(0.5,1.25)+ 
+  theme_minimal() + ylab("Coverage (BelcheriHV-1 / Bf)") + xlab("") + theme(text = element_text(size = 20))+
+  theme(legend.position="none", plot.title = element_text(size=20))
+FIG5d
+
+Figure5_left <- ggarrange(ggplot() + theme_void(),ggplot() + theme_void(),
+                     ggplot() + theme_void(),ggplot() + theme_void(), ggplot() + theme_void(),FIG5b, 
+                     ncol = 2, nrow = 3,labels = c("a","","","", "b",""), heights = c(2,0.1,1.2), widths = c(0.05,1),
                      common.legend = TRUE, legend = c("none"), font.label = list(size = 20, color = "black"))
+Figure5_left
+Figure5_right <- ggarrange(ggplot() + theme_void(),FIG5c,
+                           ggplot() + theme_void(),ggplot() + theme_void(), ggplot() + theme_void(),FIG5d, 
+                           ncol = 2, nrow = 3,labels = c("c","","","", "d",""), heights = c(2,0.1,1.2), widths = c(0.05,1),
+                           common.legend = TRUE, legend = c("none"), font.label = list(size = 20, color = "black"))
+Figure5_right
+
+Figure5 <- ggarrange(Figure5_left, Figure5_right, 
+                     ncol = 2, nrow = 1,labels = c("",""), widths = c(1,1), 
+                     common.legend = TRUE, legend = c("none"), font.label = list(size = 24, color = "black"))
 Figure5
 
 ##################### Expression analysis of PAV genes (B. belcheri) ###############
@@ -565,9 +573,9 @@ m_absent <- M_cov_PAV[M_cov_PAV$X0<7,]
 m_present <- M_cov_PAV[M_cov_PAV$X0>42,]
 m_hemy <- M_cov_PAV[M_cov_PAV$X0>14 & M_cov_PAV$X0<42,]
 
-FIG4A <- ggarrange(F_cov, F_cov_fig, M_cov, M_cov_fig, ncol = 2, nrow = 2, labels = c("auto"), 
+FIGS5 <- ggarrange(F_cov, F_cov_fig, M_cov, M_cov_fig, ncol = 2, nrow = 2, labels = c("auto"), 
                      common.legend = TRUE, legend = c("none"), font.label = list(size = 20, color = "black"), hjust = 0)
-FIG4A
+FIGS5
 
 venn.diagram(
   x = list(vec1, vec2),
@@ -616,20 +624,14 @@ Bf_doughter <- data.matrix(Bf_s_d)
 #          fontsize_row =1, fontsize_col = 8, main="lupin PAV", xlab = "Samples", ylab = "Dispensable Genes", 
 #          seriate = "OLO", plot_method = "plotly", file = "bf_gene_matrix_d.html")
 
-
-frac <- read.csv2("fraction.csv")
-
+frac <- read.csv2("fraction.csv")  # LOAD THE FRACTIONS OF GENES IN PAV FOR THE DIFFERENT CLASSES (TABLE 2)
 #my_comparisons <- list( c("II", "I"),  c("II", "III") )
-FIG4B <- ggviolin(frac, x = "Class", y = "perc",  add = "boxplot", 
+FIG8 <- ggviolin(frac, x = "Class", y = "perc",  add = "boxplot", 
                   xlab = "PAV gene classes", ylab = "Absent in progeny (%)",
                   short.panel.labs = TRUE,  size = 1, color = "black", fill = "white") + theme_minimal() +
                   theme(legend.position="none", text = element_text(size = 14)) +
                   stat_compare_means(method = "anova",label.y = 95, label.x = 2.5)
-FIG4B
-
-FIG4 <- ggarrange(FIG4A,FIG4B, ncol = 1, nrow = 2, labels = c("","e"), widths = c(1,1), 
-                     heights = c(2,1), common.legend = TRUE, legend = c("none"), font.label = list(size = 20, color = "black"))
-FIG4
+FIG8
 
 ##################################### ORTHOLOGY ANALYSIS ##########################
 
@@ -718,20 +720,32 @@ data_forFIG1a <- data[!data$Run %in% c("SRR2757687", "SRR2757688", "SRR12010277"
 Fig1a <- ggboxplot(data_forFIG1a, y = "No_PAV_gene", color = "Species", palette = c("#FF6666", "#33CCCC"),
                    add = "jitter", legend = "bottom") +
   theme_minimal() + ylab("No . of absent genes") + xlab("") + theme(text = element_text(size = 14))+
-  theme(legend.position="bottom", plot.title = element_text(size=14)) +
+  theme(legend.position="bottom", plot.title = element_text(size=14)) + 
   rotate_x_text(angle = 0) + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 Fig1a
 
-Fig1b <- ggplot(data, mapping = aes(x = No_PAV_region, y = No_PAV_gene, fill=Species)) +
-  geom_point(shape = 21, size = 5) +
-  sm_statCorr(corr_method = 'spearman')+
-  theme_minimal() + theme(legend.position="right") +
-  theme(text = element_text(size = 14))+ theme(plot.title = element_text(size=14)) +
-  ylab("No. of absent fragments (5kb)")+   xlab("No. of absent genes") + xlim(0,5000) + ylim(0,750)
-Fig1b
+data_bb <- subset(data, Species == "Bb")
+data_bf <- subset(data, Species == "Bf")
 
-FIG1_sopra <- ggarrange(ggplot() + theme_void(),Fig1a, ggplot() + theme_void(),Fig1b, ncol = 4, nrow = 1, labels = c("a","","b",""), 
-                        widths = c(0.05,1,0.05,1), common.legend = TRUE, heights = c(1,1),
+Fig1b_Bb <- ggplot(data_bb, mapping = aes(x = No_PAV_region, y = No_PAV_gene, fill=Species)) +
+  geom_point(shape = 21, size = 5) +
+  sm_statCorr(corr_method = 'spearman')+ scale_fill_manual(values = c("#FF6666"))+
+  theme_minimal() + theme(legend.position = "none", text = element_text(size = 14), 
+  plot.title = element_text(size = 14, hjust = 0.5, face = "italic")) +
+  theme(text = element_text(size = 14))+ theme(plot.title = element_text(size=14)) +
+  xlab("No. of absent fragments (5kb)")+  ylab("No. of absent genes") + xlim(1000,2000) + ylim(300,650) 
+Fig1b_Bb
+Fig1b_Bf <- ggplot(data_bf, mapping = aes(x = No_PAV_region, y = No_PAV_gene, fill=Species)) +
+  geom_point(shape = 21, size = 5) +
+  sm_statCorr(corr_method = 'spearman')+ scale_fill_manual(values = c("#33CCCC"))+
+  theme_minimal() + theme(legend.position = "none", text = element_text(size = 14), 
+  plot.title = element_text(size = 14, hjust = 0.5, face = "italic")) +
+  theme(text = element_text(size = 14))+ theme(plot.title = element_text(size=14)) +
+  xlab("No. of absent fragments (5kb)")+  ylab("No. of absent genes") + xlim(3750,4500) + ylim(350,650) 
+Fig1b_Bf
+
+FIG1_sopra <- ggarrange(ggplot() + theme_void(),Fig1a, ggplot() + theme_void(),Fig1b_Bb,Fig1b_Bf, ncol = 5, nrow = 1, labels = c("a","","b","",""), 
+                        widths = c(0.05,0.6,0.05,0.6,0.6), common.legend = TRUE, heights = c(1,1),
                         legend = c("right"), font.label = list(size = 20, color = "black"), hjust = 0) 
 FIG1_sopra
 FIG1_sotto <- ggarrange(ggplot() + theme_void(), Bb_FIG_RNA_tot,ggplot() + theme_void(), Bf_FIG_RNA_tot, ggplot() + theme_void(),Bb_FIG_zero, ggplot() + theme_void(),Bf_FIG_zero,
@@ -764,5 +778,3 @@ FIGS1 <- ggarrange(ggplot() + theme_void(),Fig1c, ggplot() + theme_void(),Fig1d,
                    ncol = 4, nrow = 1, labels = c("a","","b",""), widths = c(0.05,1,0.05,1), 
                    common.legend = TRUE, legend = c("none"), font.label = list(size = 20, color = "black"))
 FIGS1
-
-
